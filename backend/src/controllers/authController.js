@@ -21,7 +21,12 @@ exports.register = async (req, res) => {
     const hash = await bcrypt.hash(password, salt);
     const user = await User.create({ name, email, address, passwordHash: hash, role: role || "user" });
     const token = signToken(user);
-    res.cookie("token", token, { httpOnly: true, sameSite: "lax" });
+    // *** CHANGED LINE ***
+    res.cookie("token", token, {
+      httpOnly: true,
+      secure: true,
+      sameSite: 'none'
+    });
     return res.json({ user: { id: user.id, name: user.name, email: user.email, role: user.role } });
   } catch (err) {
     return res.status(500).json({ message: "Server error", error: err.message });
@@ -36,7 +41,12 @@ exports.login = async (req, res) => {
     const ok = await bcrypt.compare(password, user.passwordHash);
     if (!ok) return res.status(400).json({ message: "Invalid credentials" });
     const token = signToken(user);
-    res.cookie("token", token, { httpOnly: true, sameSite: "lax" });
+    // *** CHANGED LINE ***
+    res.cookie("token", token, {
+      httpOnly: true,
+      secure: true,
+      sameSite: 'none'
+    });
     return res.json({ user: { id: user.id, name: user.name, email: user.email, role: user.role } });
   } catch (err) {
     return res.status(500).json({ message: "Server error", error: err.message });
