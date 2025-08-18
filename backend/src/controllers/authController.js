@@ -4,8 +4,13 @@ const jwt = require("jsonwebtoken");
 const { validationResult } = require("express-validator");
 require("dotenv").config();
 
+// Create JWT token for user authentication
 const signToken = (user) => {
-  return jwt.sign({ id: user.id }, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRES_IN || "7d" });
+  return jwt.sign(
+    { id: user.id }, 
+    process.env.JWT_SECRET, 
+    { expiresIn: process.env.JWT_EXPIRES_IN || "7d" }
+  );
 };
 
 exports.register = async (req, res) => {
@@ -33,13 +38,18 @@ exports.register = async (req, res) => {
   }
 };
 
+// Handle user login
 exports.login = async (req, res) => {
   try {
     const { email, password } = req.body;
+    
+    // Check if user exists
     const user = await User.findOne({ where: { email } });
     if (!user) return res.status(400).json({ message: "Invalid credentials" });
-    const ok = await bcrypt.compare(password, user.passwordHash);
-    if (!ok) return res.status(400).json({ message: "Invalid credentials" });
+    
+    // Verify password
+    const isPasswordValid = await bcrypt.compare(password, user.passwordHash);
+    if (!isPasswordValid) return res.status(400).json({ message: "Invalid credentials" });
     const token = signToken(user);
     // *** CHANGED LINE ***
     res.cookie("token", token, {
@@ -53,16 +63,32 @@ exports.login = async (req, res) => {
   }
 };
 
-exports.logout = async (req, res) => {
-  res.clearCookie("token");
-  res.json({ message: "Logged out" });
+// Handle user logout
+exports.logout = (req, res) => {
+  // Clear authentication cookie
+  res.clearCookie("token", {
+    httpOnly: true,
+    secure: true,
+    sameSite: 'none'
+  });
+  res.json({ message: "Successfully logged out" });
 };
 
+// Get current user's profile
 exports.me = async (req, res) => {
   try {
-    const user = await User.findByPk(req.user.id, { attributes: ["id","name","email","address","role"] });
+    // Fetch user data without sensitive information
+    const user = await User.findByPk(req.user.id, { 
+      attributes: ["id", "name", "email", "address", "role"] 
+    });
+    
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+    
     return res.json({ user });
   } catch (err) {
-    return res.status(500).json({ message: "Server error" });
+    console.error('Error fetching profile:', err);
+    return res.status(500).json({ message: "Error fetching profile" });
   }
 };

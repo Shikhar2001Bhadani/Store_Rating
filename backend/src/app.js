@@ -8,42 +8,36 @@ const app = express();
 app.use(express.json());
 app.use(cookieParser());
 
-// --- START OF CHANGES ---
-
-// List of allowed origins for CORS
+// Configure CORS with allowed origins
 const allowedOrigins = [
-  // Your primary frontend URL from environment variables
+  // Frontend URL from env or default to local development
   process.env.FRONTEND_ORIGIN || "http://localhost:5173",
-  // A regular expression to match all Vercel preview URLs for your project
+  // Vercel preview URLs pattern
   /https:\/\/store-rating-.*-shikhars-projects-8c874482\.vercel\.app$/
 ];
 
 app.use(cors({
   origin: function (origin, callback) {
-    // Allow requests with no origin (like mobile apps or curl requests)
+    // Allow requests with no origin (mobile apps, curl, etc.)
     if (!origin) return callback(null, true);
 
-    // Check if the origin is in our allowed list
-    if (allowedOrigins.some(allowedOrigin => {
-      if (typeof allowedOrigin === 'string') {
-        return allowedOrigin === origin;
-      }
-      // If it's a regex, test it against the origin
-      return allowedOrigin.test(origin);
-    })) {
+    // Check if origin matches any allowed pattern
+    const isAllowed = allowedOrigins.some(allowedOrigin => 
+      typeof allowedOrigin === 'string' 
+        ? allowedOrigin === origin 
+        : allowedOrigin.test(origin)
+    );
+    
+    if (isAllowed) {
       callback(null, true);
     } else {
-      const msg = 'The CORS policy for this site does not allow access from the specified Origin.';
-      callback(new Error(msg), false);
+      callback(new Error('Not allowed by CORS policy'), false);
     }
   },
   credentials: true
 }));
 
-// --- END OF CHANGES ---
-
-
-// routes
+// API Routes
 app.use("/api/auth", require("./routes/authRoutes"));
 app.use("/api/stores", require("./routes/storeRoutes"));
 app.use("/api/ratings", require("./routes/ratingRoutes"));
